@@ -5,12 +5,9 @@ import time
 import os
 from sqlalchemy.exc import SQLAlchemyError
 
-# Get the DATABASE_URL from environment variable
-database_url = os.getenv('DATABASE_URL')
-
-# If using Render, modify the URL to work with SQLAlchemy
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
 
@@ -38,58 +35,63 @@ class Shift(db.Model):
         return ShiftConfig.SHIFTS[self.shift_type]['duration']
 
 def init_db(app):
-    max_retries = 3
-    retry_delay = 2  # seconds
-    
-    # Configure the SQLAlchemy database URI from Config class
-    app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
+    max_retries = 5  # Increased retries for production
+    retry_delay = 5  # Increased delay for production
     
     # Initialize the db with the app
     db.init_app(app)
     
     for attempt in range(max_retries):
         try:
-            logging.info(f"Attempting database initialization (attempt {attempt + 1}/{max_retries})")
+            logger.info(f"Attempting database initialization (attempt {attempt + 1}/{max_retries})")
             
             with app.app_context():
                 # Create all tables if they don't exist
                 db.create_all()
                 
-                # Only initialize caregivers in development or if forced
-                if not os.environ.get('RENDER', '') or os.environ.get('FORCE_INIT_DB', ''):
-                    # Check if we need to initialize caregivers
-                    caregiver_count = Caregiver.query.count()
-                    if caregiver_count == 0:
-                        logging.info("No caregivers found. Initializing caregivers...")
-                        for name in ShiftConfig.CAREGIVERS:
-                            # Check if caregiver already exists
+                # Check if we need to initialize caregivers
+                caregiver_count = Caregiver.query.count()
+                
+                if caregiver_count == 0:
+                    logger.info("No caregivers found. Initializing caregivers...")
+                    
+                    # Initialize caregivers in smaller batches
+                    batch_size = 2
+                    for i in range(0, len(ShiftConfig.CAREGIVERS), batch_size):
+                        batch = ShiftConfig.CAREGIVERS[i:i + batch_size]
+                        for name in batch:
                             if not Caregiver.query.filter_by(name=name).first():
                                 caregiver = Caregiver(name=name)
                                 db.session.add(caregiver)
-                        
                         db.session.commit()
-                        logging.info(f"Successfully initialized {len(ShiftConfig.CAREGIVERS)} caregivers")
-                    else:
-                        logging.info(f"Found {caregiver_count} existing caregivers")
+                        logger.info(f"Initialized caregivers batch {i//batch_size + 1}")
+                    
+                    logger.info(f"Successfully initialized {len(ShiftConfig.CAREGIVERS)} caregivers")
                 else:
-                    logging.info("Skipping caregiver initialization in production environment")
+                    logger.info(f"Found {caregiver_count} existing caregivers")
                 
                 return True
 
         except SQLAlchemyError as e:
-            logging.error(f"Database error on attempt {attempt + 1}: {str(e)}")
+            logger.error(f"Database error on attempt {attempt + 1}: {str(e)}")
             if attempt < max_retries - 1:
-                logging.info(f"Retrying in {retry_delay} seconds...")
+                logger.info(f"Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
-                logging.error("Failed to initialize database after all retries")
-                return False
+                logger.error("Failed to initialize database after all retries")
+                # In production, we might want to continue running even if initialization fails
+                if os.environ.get('RENDER', ''):
+                    logger.warning("Continuing despite database initialization failure")
+                    return False
+                raise
         except Exception as e:
-            logging.error(f"Unexpected error on attempt {attempt + 1}: {str(e)}")
+            logger.error(f"Unexpected error on attempt {attempt + 1}: {str(e)}")
             if attempt < max_retries - 1:
-                logging.info(f"Retrying in {retry_delay} seconds...")
+                logger.info(f"Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
-                logging.error("Failed to initialize database after all retries")
-                return False 
+                logger.error("Failed to initialize database after all retries")
+                if os.environ.get('RENDER', ''):
+                    logger.warning("Continuing despite database initialization failure")
+                    return False
+                raise 

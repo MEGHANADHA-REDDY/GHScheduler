@@ -24,7 +24,7 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change'
-    DEBUG = True  # Enable debug mode by default
+    DEBUG = os.environ.get('FLASK_DEBUG', '0') == '1'
     PORT = int(os.environ.get('PORT', 5000))
 
 class ShiftConfig:

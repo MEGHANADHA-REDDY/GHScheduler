@@ -4,11 +4,10 @@ from routes import views
 from config import Config
 import os
 import logging
-import traceback
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG level
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -35,15 +34,14 @@ def create_app():
         # Add error handlers
         @app.errorhandler(500)
         def handle_500(error):
-            error_traceback = traceback.format_exc()
-            logger.error(f"Internal Server Error: {error}\nTraceback:\n{error_traceback}")
+            error_message = str(error)
+            logger.error(f"Internal Server Error: {error_message}")
             return render_template('error.html', 
                                 error_code=500,
-                                error_message=str(error)), 500
+                                error_message=error_message), 500
         
         @app.errorhandler(404)
         def handle_404(error):
-            logger.error(f"Page Not Found: {error}")
             return render_template('error.html',
                                 error_code=404,
                                 error_message="Page Not Found"), 404
@@ -55,19 +53,17 @@ def create_app():
         logger.debug("Application creation completed successfully")
         return app
     except Exception as e:
-        error_traceback = traceback.format_exc()
-        logger.error(f"Error creating application: {e}\nTraceback:\n{error_traceback}")
+        logger.error(f"Error creating application: {str(e)}")
         raise
 
-# Create the application instance that will be used by Gunicorn
-application = create_app()
+# Create the application instance
+app = create_app()
 
-# Only enable debug mode when running locally
 if __name__ == '__main__':
     try:
         port = int(os.environ.get('PORT', 5000))
         logger.info(f"Starting application on port {port}")
-        application.run(host='0.0.0.0', port=port, debug=Config.DEBUG)
+        app.run(host='0.0.0.0', port=port, debug=Config.DEBUG)
     except Exception as e:
-        error_traceback = traceback.format_exc()
-        logger.error(f"Error running application: {e}\nTraceback:\n{error_traceback}") 
+        logger.error(f"Error running application: {str(e)}")
+        raise
