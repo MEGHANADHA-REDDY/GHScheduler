@@ -6,11 +6,21 @@ class Config:
     
     # Database configuration
     database_url = os.environ.get('DATABASE_URL', '')
+    
+    # Handle both 'postgres://' and 'postgresql://' URL formats
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    SQLALCHEMY_DATABASE_URI = database_url or \
-        'sqlite:///' + os.path.join(base_dir, 'schedule.db')
+    # Use PostgreSQL in production (Render) and SQLite in development
+    if os.environ.get('RENDER', ''):
+        # We're on Render, use PostgreSQL
+        if not database_url:
+            raise ValueError('DATABASE_URL environment variable is required when running on Render')
+        SQLALCHEMY_DATABASE_URI = database_url
+    else:
+        # Local development, use SQLite
+        SQLALCHEMY_DATABASE_URI = database_url or \
+            'sqlite:///' + os.path.join(base_dir, 'schedule.db')
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change'
