@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from config import ShiftConfig
 import logging
 import time
+import os
 
 db = SQLAlchemy()
 
@@ -31,32 +32,36 @@ class Shift(db.Model):
 def init_db(app):
     max_retries = 3
     retry_delay = 2  # seconds
+    
+    # Initialize the Flask-SQLAlchemy extension
+    db.init_app(app)
 
     for attempt in range(max_retries):
         try:
             logging.info(f"Attempting database initialization (attempt {attempt + 1}/{max_retries})")
             
-            # Initialize the Flask-SQLAlchemy extension
-            db.init_app(app)
-            
             with app.app_context():
-                # Create all tables
+                # Create all tables if they don't exist
                 db.create_all()
                 
-                # Check if we need to initialize caregivers
-                caregiver_count = Caregiver.query.count()
-                if caregiver_count == 0:
-                    logging.info("No caregivers found. Initializing caregivers...")
-                    for name in ShiftConfig.CAREGIVERS:
-                        # Check if caregiver already exists
-                        if not Caregiver.query.filter_by(name=name).first():
-                            caregiver = Caregiver(name=name)
-                            db.session.add(caregiver)
-                    
-                    db.session.commit()
-                    logging.info(f"Successfully initialized {len(ShiftConfig.CAREGIVERS)} caregivers")
+                # Only initialize caregivers in development or if forced
+                if not os.environ.get('RENDER', '') or os.environ.get('FORCE_INIT_DB', ''):
+                    # Check if we need to initialize caregivers
+                    caregiver_count = Caregiver.query.count()
+                    if caregiver_count == 0:
+                        logging.info("No caregivers found. Initializing caregivers...")
+                        for name in ShiftConfig.CAREGIVERS:
+                            # Check if caregiver already exists
+                            if not Caregiver.query.filter_by(name=name).first():
+                                caregiver = Caregiver(name=name)
+                                db.session.add(caregiver)
+                        
+                        db.session.commit()
+                        logging.info(f"Successfully initialized {len(ShiftConfig.CAREGIVERS)} caregivers")
+                    else:
+                        logging.info(f"Found {caregiver_count} existing caregivers")
                 else:
-                    logging.info(f"Found {caregiver_count} existing caregivers")
+                    logging.info("Skipping caregiver initialization in production environment")
                 
                 return True
 
