@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import SQLAlchemyError
 from config import ShiftConfig
 import logging
 import time
@@ -61,22 +60,11 @@ def init_db(app):
                 
                 return True
 
-        except SQLAlchemyError as e:
+        except Exception as e:
             logging.error(f"Database error on attempt {attempt + 1}: {str(e)}")
             if attempt < max_retries - 1:
                 logging.info(f"Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
                 logging.error("Failed to initialize database after all retries")
-                # Don't raise the exception - let the app continue
-                return False
-                
-        except Exception as e:
-            logging.error(f"Unexpected error during database initialization: {str(e)}")
-            if attempt < max_retries - 1:
-                logging.info(f"Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
-            else:
-                logging.error("Failed to initialize database after all retries")
-                # Don't raise the exception - let the app continue
                 return False 
