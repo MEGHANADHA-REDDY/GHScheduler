@@ -1,15 +1,9 @@
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -29,10 +23,7 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
-
-# Flask
-instance/
-.webassets-cache
+env/
 
 # IDE
 .idea/
@@ -40,7 +31,16 @@ instance/
 *.swp
 *.swo
 
+# Database
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
 # OS
 .DS_Store
-Thumbs.db
-__MACOSX/ 
+Thumbs.db 

@@ -22,7 +22,7 @@ class Caregiver(db.Model):
 class Shift(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    shift_type = db.Column(db.String(2), nullable=False)  # A, B, C, G1, or G2
+    shift_type = db.Column(db.String(3), nullable=False)  # A, B, C, G1, or G2
     caregiver_id = db.Column(db.Integer, db.ForeignKey('caregiver.id'), nullable=False)
 
     @property
