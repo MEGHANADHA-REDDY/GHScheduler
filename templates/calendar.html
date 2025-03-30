@@ -23,6 +23,7 @@
         color: white;
         padding: 10px;
         text-align: left;
+        font-size: 1.1em;
     }
     .shift-cell {
         min-height: 60px;
@@ -33,6 +34,11 @@
         padding: 4px 8px;
         border-radius: 4px;
     }
+    .shift-A { background-color: #90EE90; }
+    .shift-B { background-color: #87CEEB; }
+    .shift-C { background-color: #DDA0DD; }
+    .shift-G1 { background-color: #F0E68C; }
+    .shift-G2 { background-color: #FFB6C1; }
 </style>
 {% endblock %}
 
@@ -42,7 +48,8 @@
 <div class="legend">
     <h3>Shift Times:</h3>
     <span class="legend-item shift-A">A Shift (6AM-2PM)</span>
-    <span class="legend-item shift-G">G Shift (12PM-8PM)</span>
+    <span class="legend-item shift-G2">G2 Shift (9AM-5PM)</span>
+    <span class="legend-item shift-G1">G1 Shift (12PM-8PM)</span>
     <span class="legend-item shift-B">B Shift (4PM-12AM)</span>
     <span class="legend-item shift-C">C Shift (12AM-8AM)</span>
 </div>
@@ -52,7 +59,8 @@
         <tr>
             <th>Day</th>
             <th>A Shift</th>
-            <th>G Shift</th>
+            <th>G2 Shift</th>
+            <th>G1 Shift</th>
             <th>B Shift</th>
             <th>C Shift</th>
         </tr>
@@ -61,14 +69,12 @@
         {% for day in range(7) %}
         <tr>
             <td class="day-header">
-                {% set current_date = dates[day] %}
-                {{ current_date.strftime('%A') }}<br>
-                <small>{{ current_date.strftime('%Y-%m-%d') }}</small>
+                {{ dates[day].strftime('%A') }}
             </td>
-            {% for shift_type in ['A', 'G', 'B', 'C'] %}
+            {% for shift_type in ['A', 'G2', 'G1', 'B', 'C'] %}
             <td class="shift-cell">
                 {% for shift in shifts %}
-                    {% if shift.date == current_date.date() and shift.shift_type == shift_type %}
+                    {% if shift.date == dates[day].date() and shift.shift_type == shift_type %}
                         <div class="caregiver-name shift-{{ shift_type }}">
                             {{ shift.caregiver.name }}
                         </div>
