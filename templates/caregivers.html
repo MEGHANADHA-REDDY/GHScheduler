@@ -40,7 +40,8 @@
     .shift-A { background-color: #90EE90; }
     .shift-B { background-color: #87CEEB; }
     .shift-C { background-color: #DDA0DD; }
-    .shift-G { background-color: #F0E68C; }
+    .shift-G1 { background-color: #F0E68C; }
+    .shift-G2 { background-color: #FFB6C1; }
     .off-day {
         color: #666;
         font-style: italic;
@@ -92,8 +93,15 @@
         display: block;
         margin: 2px 0;
     }
-    .shift-G { 
+    .shift-G1 { 
         background-color: #F0E68C;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: block;
+        margin: 2px 0;
+    }
+    .shift-G2 { 
+        background-color: #FFB6C1;
         padding: 4px 8px;
         border-radius: 4px;
         display: block;
@@ -319,7 +327,8 @@ function showAlert(type, message) {
         <span class="shift-A">A Shift (6AM-2PM)</span>
         <span class="shift-B">B Shift (4PM-12AM)</span>
         <span class="shift-C">C Shift (12AM-8AM)</span>
-        <span class="shift-G">G Shift (12PM-8PM)</span>
+        <span class="shift-G1">G1 Shift (12PM-8PM)</span>
+        <span class="shift-G2">G2 Shift (9AM-5PM)</span>
     </div>
 </div>
 {% endblock %} 

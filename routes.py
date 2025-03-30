@@ -14,13 +14,11 @@ def index():
 def calendar_view():
     today = datetime.now().date()
     start_date = today - timedelta(days=today.weekday())  # Start from Monday
-    end_date = start_date + timedelta(days=7)  # One week
-    
-    dates = list(rrule(DAILY, count=7, dtstart=start_date))  # Only 7 days
+    dates = list(rrule(DAILY, count=7, dtstart=start_date))
     
     shifts = Shift.query.filter(
         Shift.date >= start_date,
-        Shift.date < end_date
+        Shift.date < start_date + timedelta(days=7)
     ).order_by(Shift.date, Shift.shift_type).all()
     
     return render_template('calendar.html', dates=dates, shifts=shifts)
@@ -29,22 +27,23 @@ def calendar_view():
 def hourly_view():
     today = datetime.now().date()
     start_date = today - timedelta(days=today.weekday())  # Start from Monday
+    dates = list(rrule(DAILY, count=7, dtstart=start_date))
+    
+    shifts = Shift.query.filter(
+        Shift.date >= start_date,
+        Shift.date < start_date + timedelta(days=7)
+    ).order_by(Shift.date, Shift.shift_type).all()
+    
+    return render_template('hourly.html', dates=dates, shifts=shifts)
+
+@views.route('/caregivers')
+def caregiver_view():
+    caregivers = Caregiver.query.all()
+    today = datetime.now().date()
+    start_date = today - timedelta(days=today.weekday())  # Start from Monday
     end_date = start_date + timedelta(days=7)  # One week
     
-    # Generate time slots for 24 hours
-    time_slots = []
-    for hour in range(24):
-        if hour == 0:
-            slot = "12:00 AM - 1:00 AM"
-        elif hour < 12:
-            slot = f"{hour}:00 AM - {hour+1}:00 AM"
-        elif hour == 12:
-            slot = "12:00 PM - 1:00 PM"
-        else:
-            slot = f"{hour-12}:00 PM - {(hour-12+1)}:00 PM"
-        time_slots.append(slot)
-    
-    # Get all shifts for the week
+    # Get shifts for the current week
     shifts = Shift.query.filter(
         Shift.date >= start_date,
         Shift.date < end_date
@@ -53,10 +52,11 @@ def hourly_view():
     # Create a week schedule
     week_dates = list(rrule(DAILY, count=7, dtstart=start_date))
     
-    return render_template('hourly.html', 
-                         time_slots=time_slots,
-                         dates=week_dates,
-                         shifts=shifts)
+    return render_template('caregivers.html', 
+                         caregivers=caregivers,
+                         week_dates=week_dates,
+                         shifts=shifts,
+                         shift_types=ShiftConfig.SHIFTS)
 
 @views.route('/add_shift', methods=['POST'])
 def add_shift():
@@ -80,6 +80,10 @@ def add_shift():
         if existing_shift:
             return jsonify({'error': 'Shift already assigned'}), 400
             
+        # Check if shift type is valid
+        if shift_type not in ShiftConfig.SHIFTS:
+            return jsonify({'error': 'Invalid shift type'}), 400
+            
         # Create new shift
         new_shift = Shift(
             date=date,
@@ -100,9 +104,8 @@ def add_shift():
 def remove_shift():
     try:
         shift_id = request.form.get('shift_id')
-        
         if not shift_id:
-            return jsonify({'error': 'Shift ID is required'}), 400
+            return jsonify({'error': 'Missing shift ID'}), 400
             
         shift = Shift.query.get(shift_id)
         if not shift:
@@ -115,26 +118,4 @@ def remove_shift():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@views.route('/caregivers')
-def caregiver_view():
-    caregivers = Caregiver.query.all()
-    today = datetime.now().date()
-    start_date = today - timedelta(days=today.weekday())  # Start from Monday
-    end_date = start_date + timedelta(days=7)  # One week
-    
-    # Get shifts for the current week
-    shifts = Shift.query.filter(
-        Shift.date >= start_date,
-        Shift.date < end_date
-    ).order_by(Shift.date, Shift.shift_type).all()
-    
-    # Create a week schedule
-    week_dates = list(rrule(DAILY, count=7, dtstart=start_date))
-    
-    return render_template('caregivers.html', 
-                         caregivers=caregivers,
-                         week_dates=week_dates,
-                         shifts=shifts,
-                         shift_types=ShiftConfig.SHIFTS) 
+        return jsonify({'error': str(e)}), 500 

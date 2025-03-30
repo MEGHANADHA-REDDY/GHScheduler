@@ -43,10 +43,11 @@ def generate_schedule(start_date, num_weeks=1):
 
     # Pre-calculate required shifts for the week
     total_shifts = {
-        'A': 7,   # 1 per day * 7 days
-        'B': 12,  # 2 per day * 6 days (no Saturday)
-        'C': 7,   # 1 per day * 7 days
-        'G': 14   # 2 per day * 7 days
+        'A': 7,    # 1 per day * 7 days
+        'B': 12,   # 2 per day * 6 days (no Saturday)
+        'C': 7,    # 1 per day * 7 days
+        'G1': 7,   # 1 per day * 7 days
+        'G2': 7    # 1 per day * 7 days
     }
 
     for day in range(7):
@@ -59,13 +60,19 @@ def generate_schedule(start_date, num_weeks=1):
             shift = Shift(date=current_date, shift_type='A', caregiver=cg)
             db.session.add(shift)
 
-        # Assign G shift (2 caregivers)
-        for _ in range(2):
-            cg = get_least_scheduled_caregivers(caregivers, used_caregivers_today, start_date, end_date)
-            if cg:
-                used_caregivers_today.add(cg.id)
-                shift = Shift(date=current_date, shift_type='G', caregiver=cg)
-                db.session.add(shift)
+        # Assign G1 shift (1 caregiver)
+        cg = get_least_scheduled_caregivers(caregivers, used_caregivers_today, start_date, end_date)
+        if cg:
+            used_caregivers_today.add(cg.id)
+            shift = Shift(date=current_date, shift_type='G1', caregiver=cg)
+            db.session.add(shift)
+
+        # Assign G2 shift (1 caregiver)
+        cg = get_least_scheduled_caregivers(caregivers, used_caregivers_today, start_date, end_date)
+        if cg:
+            used_caregivers_today.add(cg.id)
+            shift = Shift(date=current_date, shift_type='G2', caregiver=cg)
+            db.session.add(shift)
 
         # Assign B shift (2 caregivers, except Saturday)
         if current_date.weekday() != 5:  # Not Saturday
@@ -97,11 +104,11 @@ def fix_missing_shifts(start_date):
     
     for day in range(7):
         # Check each shift type
-        for shift_type in ['A', 'G', 'B', 'C']:
+        for shift_type in ['A', 'G1', 'G2', 'B', 'C']:
             if shift_type == 'B' and current_date.weekday() == 5:  # Skip B shift on Saturday
                 continue
                 
-            expected_count = 2 if shift_type in ['G', 'B'] else 1
+            expected_count = 2 if shift_type == 'B' else 1
             actual_shifts = Shift.query.filter(
                 Shift.date == current_date,
                 Shift.shift_type == shift_type
@@ -154,7 +161,7 @@ def validate_schedule(start_date):
     current = start_date
     for day in range(7):
         print(f"\n{current.strftime('%A')}:")
-        for shift_type in ['A', 'G', 'B', 'C']:
+        for shift_type in ['A', 'G1', 'G2', 'B', 'C']:
             shifts = Shift.query.filter(
                 Shift.date == current,
                 Shift.shift_type == shift_type
