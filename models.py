@@ -1,6 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import SQLAlchemyError
 from config import ShiftConfig
 import logging
+import time
 
 db = SQLAlchemy()
 
@@ -28,21 +30,53 @@ class Shift(db.Model):
         return ShiftConfig.SHIFTS[self.shift_type]['duration']
 
 def init_db(app):
-    try:
-        db.init_app(app)
-        with app.app_context():
-            # Create tables
-            db.create_all()
+    max_retries = 3
+    retry_delay = 2  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            logging.info(f"Attempting database initialization (attempt {attempt + 1}/{max_retries})")
             
-            # Create caregivers if they don't exist
-            if not Caregiver.query.first():
-                logging.info("Initializing caregivers...")
-                for name in ShiftConfig.CAREGIVERS:
-                    if not Caregiver.query.filter_by(name=name).first():
-                        db.session.add(Caregiver(name=name))
-                db.session.commit()
-                logging.info("Caregivers initialized successfully")
-    except Exception as e:
-        logging.error(f"Error initializing database: {str(e)}")
-        # Don't raise the exception - let the app continue running
-        # but log the error for debugging 
+            # Initialize the Flask-SQLAlchemy extension
+            db.init_app(app)
+            
+            with app.app_context():
+                # Create all tables
+                db.create_all()
+                
+                # Check if we need to initialize caregivers
+                caregiver_count = Caregiver.query.count()
+                if caregiver_count == 0:
+                    logging.info("No caregivers found. Initializing caregivers...")
+                    for name in ShiftConfig.CAREGIVERS:
+                        # Check if caregiver already exists
+                        if not Caregiver.query.filter_by(name=name).first():
+                            caregiver = Caregiver(name=name)
+                            db.session.add(caregiver)
+                    
+                    db.session.commit()
+                    logging.info(f"Successfully initialized {len(ShiftConfig.CAREGIVERS)} caregivers")
+                else:
+                    logging.info(f"Found {caregiver_count} existing caregivers")
+                
+                return True
+
+        except SQLAlchemyError as e:
+            logging.error(f"Database error on attempt {attempt + 1}: {str(e)}")
+            if attempt < max_retries - 1:
+                logging.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logging.error("Failed to initialize database after all retries")
+                # Don't raise the exception - let the app continue
+                return False
+                
+        except Exception as e:
+            logging.error(f"Unexpected error during database initialization: {str(e)}")
+            if attempt < max_retries - 1:
+                logging.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logging.error("Failed to initialize database after all retries")
+                # Don't raise the exception - let the app continue
+                return False 
