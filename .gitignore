@@ -1,3 +1,8 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]
@@ -29,10 +34,6 @@ ENV/
 instance/
 .webassets-cache
 
-# Database
-*.db
-*.sqlite3
-
 # IDE
 .idea/
 .vscode/
@@ -41,4 +42,5 @@ instance/
 
 # OS
 .DS_Store
+Thumbs.db
 __MACOSX/ 
