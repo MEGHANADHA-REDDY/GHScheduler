@@ -1,8 +1,16 @@
 from flask_sqlalchemy import SQLAlchemy
-from config import ShiftConfig
+from config import ShiftConfig, Config
 import logging
 import time
 import os
+from sqlalchemy.exc import SQLAlchemyError
+
+# Get the DATABASE_URL from environment variable
+database_url = os.getenv('DATABASE_URL')
+
+# If using Render, modify the URL to work with SQLAlchemy
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 db = SQLAlchemy()
 
@@ -33,9 +41,13 @@ def init_db(app):
     max_retries = 3
     retry_delay = 2  # seconds
     
-    # Initialize the Flask-SQLAlchemy extension
+    # Configure the SQLAlchemy database URI from Config class
+    app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
+    
+    # Initialize the db with the app
     db.init_app(app)
-
+    
     for attempt in range(max_retries):
         try:
             logging.info(f"Attempting database initialization (attempt {attempt + 1}/{max_retries})")
@@ -65,8 +77,16 @@ def init_db(app):
                 
                 return True
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logging.error(f"Database error on attempt {attempt + 1}: {str(e)}")
+            if attempt < max_retries - 1:
+                logging.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logging.error("Failed to initialize database after all retries")
+                return False
+        except Exception as e:
+            logging.error(f"Unexpected error on attempt {attempt + 1}: {str(e)}")
             if attempt < max_retries - 1:
                 logging.info(f"Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
