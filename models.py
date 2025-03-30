@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from config import ShiftConfig
+import logging
 
 db = SQLAlchemy()
 
@@ -27,12 +28,21 @@ class Shift(db.Model):
         return ShiftConfig.SHIFTS[self.shift_type]['duration']
 
 def init_db(app):
-    db.init_app(app)
-    with app.app_context():
-        db.create_all()
-        
-        # Create caregivers if they don't exist
-        if not Caregiver.query.first():
-            for name in ShiftConfig.CAREGIVERS:
-                db.session.add(Caregiver(name=name))
-            db.session.commit() 
+    try:
+        db.init_app(app)
+        with app.app_context():
+            # Create tables
+            db.create_all()
+            
+            # Create caregivers if they don't exist
+            if not Caregiver.query.first():
+                logging.info("Initializing caregivers...")
+                for name in ShiftConfig.CAREGIVERS:
+                    if not Caregiver.query.filter_by(name=name).first():
+                        db.session.add(Caregiver(name=name))
+                db.session.commit()
+                logging.info("Caregivers initialized successfully")
+    except Exception as e:
+        logging.error(f"Error initializing database: {str(e)}")
+        # Don't raise the exception - let the app continue running
+        # but log the error for debugging 

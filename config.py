@@ -1,8 +1,20 @@
+import os
+
 class Config:
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///schedule.db'
+    # Get the directory where the application is running
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    
+    # Use PostgreSQL on Render, SQLite locally
+    if os.environ.get('RENDER'):
+        SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
+    else:
+        SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+            'sqlite:///' + os.path.join(base_dir, 'schedule.db')
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEBUG = True
-    PORT = 7761
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
+    DEBUG = False  # Disable debug mode in production
+    PORT = int(os.environ.get('PORT', 5000))
 
 class ShiftConfig:
     SHIFTS = {
